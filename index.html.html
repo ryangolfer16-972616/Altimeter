@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALTIMETER — Aviation Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c14;
+    --surface: #0d1420;
+    --surface2: #111927;
+    --border: #1e2d42;
+    --accent: #0ea5e9;
+    --accent2: #f59e0b;
+    --text: #e2eaf4;
+    --muted: #5a7a99;
+    --danger: #ef4444;
+    --green: #22c55e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Radar background animation */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50vh;
+    right: -30vw;
+    width: 80vw;
+    height: 80vw;
+    border-radius: 50%;
+    border: 1px solid rgba(14,165,233,0.06);
+    animation: radarPulse 8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    top: -50vh;
+    right: -30vw;
+    width: 50vw;
+    height: 50vw;
+    border-radius: 50%;
+    border: 1px solid rgba(14,165,233,0.1);
+    animation: radarPulse 8s ease-in-out infinite 2s;
+    pointer-events: none;
+    z-index: 0;
+  }
+  @keyframes radarPulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.03); }
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* NAV */
+  nav {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    background: rgba(8,12,20,0.92);
+    backdrop-filter: blur(16px);
+    z-index: 100;
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .logo-icon {
+    width: 30px;
+    height: 30px;
+    position: relative;
+  }
+  .logo-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    box-shadow: 0 0 12px var(--accent);
+    animation: blip 2s ease-in-out infinite;
+  }
+  @keyframes blip { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+  .logo-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(14,165,233,0.5);
+    animation: ring 2s ease-in-out infinite;
+  }
+  @keyframes ring { 0%{transform:translate(-50%,-50%) scale(0.6);opacity:1;} 100%{transform:translate(-50%,-50%) scale(1.6);opacity:0;} }
+
+  /* SEARCH BAR */
+  .search-wrap {
+    flex: 1;
+    max-width: 600px;
+    position: relative;
+  }
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 48px 11px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-wrap input::placeholder { color: var(--muted); }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-btn {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 48px;
+    background: var(--accent);
+    border: none;
+    border-radius: 0 6px 6px 0;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+    z-index: 201;
+  }
+  .search-btn:hover { background: #38bdf8; }
+  .search-btn svg { width: 17px; height: 17px; color: #fff; }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+    flex-shrink: 0;
+  }
+  .live-dot {
+    width: 7px; height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: blip 1.5s infinite;
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  /* CATEGORIES */
+  .categories {
+    display: flex;
+    gap: 8px;
+    padding: 18px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .categories::-webkit-scrollbar { display: none; }
+  .cat-btn {
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .cat-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .cat-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* MAIN LAYOUT */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 32px;
+    padding: 32px 0;
+  }
+
+  /* SECTION HEADERS */
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* NEWS CARDS */
+  .hero-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.2s;
+    position: relative;
+  }
+  .hero-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .hero-card:hover .bm-btn { opacity: 1; }
+
+  .hero-card-body { padding: 24px; }
+  .card-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 3px;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .tag-fleet { background: rgba(14,165,233,0.15); color: var(--accent); }
+  .tag-reg { background: rgba(245,158,11,0.15); color: var(--accent2); }
+  .tag-mfr { background: rgba(34,197,94,0.15); color: var(--green); }
+  .tag-fin { background: rgba(168,85,247,0.15); color: #a855f7; }
+  .tag-tech { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+  .card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    line-height: 1.1;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  .card-excerpt {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--muted);
+    font-weight: 300;
+    margin-bottom: 16px;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .card-meta-dot { color: var(--border); }
+
+  .cards-list { display: flex; flex-direction: column; gap: 12px; }
+  .small-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: start;
+    position: relative;
+  }
+  .small-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .small-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+  .small-card-arrow {
+    color: var(--muted);
+    font-size: 18px;
+    margin-top: 2px;
+  }
+  .announced-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.2);
+    padding: 3px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  /* SIDEBAR */
+  .sidebar {}
+
+  /* TRENDING */
+  .trending-list { display: flex; flex-direction: column; gap: 2px; }
+  .trend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: 1px solid transparent;
+    position: relative;
+  }
+  .trend-item .bm-btn {
+    top: 10px;
+    left: auto;
+    right: 10px;
+  }
+  .trend-item:hover { background: var(--surface); border-color: var(--border); }
+  .trend-item:hover .bm-btn { opacity: 1; }
+  .trend-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    color: var(--border);
+    width: 32px;
+    flex-shrink: 0;
+    transition: color 0.2s;
+  }
+  .trend-item:hover .trend-num { color: var(--accent); }
+  .trend-item.hot .trend-num { color: var(--accent2); }
+  .trend-content {}
+  .trend-title {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    margin-bottom: 5px;
+  }
+  .trend-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hot-badge {
+    background: rgba(245,158,11,0.2);
+    color: var(--accent2);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  /* SEARCH RESULTS */
+  .search-results {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 0 0 8px 8px;
+    z-index: 200;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  .search-results.visible { display: block; }
+  .sr-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sr-spinner {
+    width: 12px; height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sr-content { padding: 16px; }
+  .sr-item {
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .sr-item:hover { background: var(--surface); border-color: var(--border); }
+  .sr-item-title { font-size: 14px; font-weight: 500; margin-bottom: 5px; }
+  .sr-item-meta { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .sr-no-results { text-align: center; padding: 32px; color: var(--muted); font-size: 14px; }
+
+  /* TICKER */
+  .ticker {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 0;
+    overflow: hidden;
+    position: relative;
+    margin: 0 -24px;
+  }
+  .ticker-inner {
+    display: flex;
+    gap: 48px;
+    animation: ticker 30s linear infinite;
+    white-space: nowrap;
+  }
+  @keyframes ticker {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+  }
+  .ticker-item strong { color: var(--text); }
+  .ticker-item .up { color: var(--green); }
+  .ticker-item .down { color: var(--danger); }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8,12,20,0.88);
+    backdrop-filter: blur(8px);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    max-width: 720px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: modalIn 0.2s ease;
+  }
+  @keyframes modalIn { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: none; } }
+  .modal-header {
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .modal-close {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 22px; line-height: 1;
+    padding: 0; flex-shrink: 0;
+    transition: color 0.2s;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 24px; }
+  .modal-spinner {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 48px;
+    gap: 16px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .modal-spinner-ring {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .modal-text {
+    font-size: 15px;
+    line-height: 1.75;
+    color: #b8cde0;
+    font-weight: 300;
+  }
+  .modal-text p { margin-bottom: 14px; }
+  .modal-text h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1px;
+    color: var(--text);
+    margin: 20px 0 10px;
+  }
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ai-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* TOPIC QUICK LINKS */
+  .quick-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .quick-link {
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .quick-link:hover { border-color: var(--accent); color: var(--accent); background: rgba(14,165,233,0.05); }
+  .quick-link.bookmark-btn { border-color: rgba(245,158,11,0.3); color: var(--accent2); }
+  .quick-link.bookmark-btn:hover { border-color: var(--accent2); background: rgba(245,158,11,0.08); }
+  .quick-link.compare-btn { border-color: rgba(168,85,247,0.3); color: #a855f7; }
+  .quick-link.compare-btn:hover { border-color: #a855f7; background: rgba(168,85,247,0.08); }
+  .quick-link.active-panel { background: rgba(14,165,233,0.12); border-color: var(--accent); color: var(--accent); }
+
+  /* BOOKMARK BUTTON ON CARD */
+  .bm-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 28px; height: 28px;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    transition: all 0.2s;
+    z-index: 2;
+    opacity: 0.5;
+  }
+  .small-card:hover .bm-btn { opacity: 1; }
+  .bm-btn:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(245,158,11,0.1); opacity: 1; }
+  .bm-btn.saved { border-color: var(--accent2); color: var(--accent2); background: rgba(245,158,11,0.1); opacity: 1; }
+
+  /* PANEL (bookmarks + compare) */
+  .panel-section {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin: 20px 0 0;
+    overflow: hidden;
+  }
+  .panel-section.open { display: block; }
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+  .panel-body { padding: 16px 20px; }
+  .panel-empty {
+    text-align: center;
+    padding: 32px;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* BOOKMARK LIST */
+  .bm-list { display: flex; flex-direction: column; gap: 8px; }
+  .bm-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .bm-item:hover { border-color: var(--accent); }
+  .bm-item-content { flex: 1; min-width: 0; }
+  .bm-item-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .bm-item-meta { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .bm-remove {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 16px; padding: 0;
+    transition: color 0.2s; flex-shrink: 0;
+  }
+  .bm-remove:hover { color: var(--danger); }
+
+  /* COMPARE TOOL */
+  .compare-inputs {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .compare-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .compare-input::placeholder { color: var(--muted); }
+  .compare-input:focus { border-color: #a855f7; }
+  .compare-vs {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .compare-go {
+    width: 100%;
+    background: #a855f7;
+    border: none;
+    color: #fff;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    padding: 11px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .compare-go:hover { background: #9333ea; }
+  .compare-result {
+    margin-top: 16px;
+    font-size: 14px;
+    line-height: 1.75;
+    color: #b8cde0;
+    font-weight: 300;
+  }
+  .compare-result p { margin-bottom: 12px; }
+  .compare-result h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+    color: var(--text);
+    margin: 16px 0 8px;
+  }
+  .compare-loading {
+    display: flex; align-items: center; gap: 10px;
+    color: var(--muted); font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 24px 0;
+  }
+  .compare-loading-ring {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: #a855f7;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* RECENT SEARCHES */
+  .recent-section {
+    margin: 28px 0 0;
+  }
+  .recent-list { display: flex; flex-direction: column; gap: 8px; }
+  .recent-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .recent-item:hover { border-color: var(--accent); background: var(--surface2); }
+  .recent-icon { color: var(--muted); font-size: 13px; flex-shrink: 0; }
+  .recent-text { font-size: 13px; font-weight: 500; flex: 1; }
+  .recent-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); flex-shrink: 0; }
+
+  @keyframes shimmer {
+    0%,100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .sidebar { order: -1; }
+    .trending-list { display: grid; grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 600px) {
+    .logo { font-size: 22px; }
+    .card-title { font-size: 20px; }
+    .trending-list { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrapper">
+    <div class="nav-inner">
+      <div class="logo">
+        <div class="logo-icon">
+          <div class="logo-ring"></div>
+          <div class="logo-dot"></div>
+        </div>
+        ALTIMETER
+      </div>
+
+      <div class="search-wrap" id="searchWrap">
+        <input type="text" id="searchInput" placeholder="Search: airline, manufacturer, FAA, Boeing..." autocomplete="off">
+        <button class="search-btn" id="searchBtn" onclick="doSearch()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+        </button>
+        <div class="search-results" id="searchResults">
+          <div class="sr-header" id="srHeader">
+            <div class="sr-spinner"></div>
+            <span id="srStatus">Querying aviation intelligence...</span>
+          </div>
+          <div class="sr-content" id="srContent"></div>
+        </div>
+      </div>
+
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        AI-POWERED
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="wrapper">
+  <!-- TICKER -->
+  <div class="ticker" style="margin-top:0">
+    <div class="ticker-inner" id="ticker">
+      <span class="ticker-item">✈ <strong>BOEING</strong> 737 MAX 10 Certification Progress</span>
+      <span class="ticker-item">✈ <strong>AIRBUS</strong> A321XLR Entry Into Service <span class="up">▲ Expanding Routes</span></span>
+      <span class="ticker-item">✈ <strong>FAA</strong> New NEXTGEN ATC Upgrade Phase III</span>
+      <span class="ticker-item">✈ <strong>EMBRAER</strong> E2 Series Fleet Expansion Orders</span>
+      <span class="ticker-item">✈ <strong>DELTA AIR LINES</strong> Fleet Renewal Plan 2025–2030</span>
+      <span class="ticker-item">✈ <strong>EASA</strong> eVTOL Certification Framework Released</span>
+      <span class="ticker-item">✈ <strong>UNITED</strong> Supersonic Boom Order Update</span>
+      <span class="ticker-item">✈ <strong>SAF</strong> Sustainable Fuel Mandate Update EU 2025</span>
+      <span class="ticker-item">✈ <strong>BOEING</strong> 737 MAX 10 Certification Progress</span>
+      <span class="ticker-item">✈ <strong>AIRBUS</strong> A321XLR Entry Into Service <span class="up">▲ Expanding Routes</span></span>
+      <span class="ticker-item">✈ <strong>FAA</strong> New NEXTGEN ATC Upgrade Phase III</span>
+      <span class="ticker-item">✈ <strong>EMBRAER</strong> E2 Series Fleet Expansion Orders</span>
+      <span class="ticker-item">✈ <strong>DELTA AIR LINES</strong> Fleet Renewal Plan 2025–2030</span>
+      <span class="ticker-item">✈ <strong>EASA</strong> eVTOL Certification Framework Released</span>
+    </div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="categories">
+    <button class="cat-btn active" onclick="setCategory(this, 'all')">All News</button>
+    <button class="cat-btn" onclick="setCategory(this, 'fleet')">Fleet & Orders</button>
+    <button class="cat-btn" onclick="setCategory(this, 'regulation')">FAA / Regulators</button>
+    <button class="cat-btn" onclick="setCategory(this, 'manufacturer')">Manufacturers</button>
+    <button class="cat-btn" onclick="setCategory(this, 'financial')">Financial</button>
+    <button class="cat-btn" onclick="setCategory(this, 'technology')">Technology</button>
+    <button class="cat-btn" onclick="setCategory(this, 'sustainability')">Sustainability</button>
+  </div>
+
+  <!-- QUICK SEARCH LINKS -->
+  <div class="quick-links" style="padding-top:20px">
+    <button class="quick-link" onclick="quickSearch('Boeing latest news 2026')">Boeing</button>
+    <button class="quick-link" onclick="quickSearch('Airbus latest news 2026')">Airbus</button>
+    <button class="quick-link" onclick="quickSearch('Embraer latest news 2026')">Embraer</button>
+    <button class="quick-link" onclick="quickSearch('FAA new rules regulations 2026')">FAA</button>
+    <button class="quick-link" onclick="quickSearch('EASA regulations 2026')">EASA</button>
+    <button class="quick-link" onclick="quickSearch('Delta Air Lines fleet financial 2026')">Delta</button>
+    <button class="quick-link" onclick="quickSearch('United Airlines fleet orders 2026')">United</button>
+    <button class="quick-link" onclick="quickSearch('American Airlines fleet news 2026')">American</button>
+    <button class="quick-link" onclick="quickSearch('Southwest Airlines news 2026')">Southwest</button>
+    <button class="quick-link" onclick="quickSearch('Ryanair fleet orders financial 2026')">Ryanair</button>
+    <button class="quick-link" onclick="quickSearch('electric aircraft eVTOL technology 2026')">eVTOL</button>
+    <button class="quick-link" onclick="quickSearch('sustainable aviation fuel SAF 2026')">SAF</button>
+    <button class="quick-link bookmark-btn" id="bookmarkTab" onclick="togglePanel('bookmarks')">🔖 Bookmarks</button>
+    <button class="quick-link compare-btn" id="compareTab" onclick="togglePanel('compare')">✈ Compare Aircraft</button>
+  </div>
+
+  <!-- BOOKMARKS PANEL -->
+  <div class="panel-section" id="bookmarksPanel">
+    <div class="panel-header">
+      <div class="panel-title">🔖 Saved Bookmarks</div>
+      <span id="bmCount" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);">0 saved</span>
+    </div>
+    <div class="panel-body">
+      <div class="bm-list" id="bmList">
+        <div class="panel-empty">No bookmarks yet.<br>Press 🔖 on any article to save it.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARE PANEL -->
+  <div class="panel-section" id="comparePanel">
+    <div class="panel-header">
+      <div class="panel-title">✈ Compare Aircraft</div>
+    </div>
+    <div class="panel-body">
+      <div class="compare-inputs">
+        <input class="compare-input" id="compareA" placeholder="e.g. Boeing 737 MAX 10">
+        <div class="compare-vs">VS</div>
+        <input class="compare-input" id="compareB" placeholder="e.g. Airbus A321neo">
+      </div>
+      <button class="compare-go" onclick="runCompare()">COMPARE AIRCRAFT</button>
+      <div id="compareResult"></div>
+    </div>
+  </div>
+
+  <!-- RECENT SEARCHES -->
+  <div class="recent-section" id="recentSection" style="display:none;">
+    <div class="section-label">From Recent Searches</div>
+    <div class="recent-list" id="recentList"></div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+    <!-- LEFT: FEED -->
+    <div class="left-col">
+      <div class="section-label">Featured Story</div>
+
+      <!-- HERO CARD -->
+      <div class="hero-card" onclick="openModal('Boeing 737 MAX 10 FAA certification timeline and latest developments 2025')">
+        <button class="bm-btn ${isBookmarked('Boeing 737 MAX 10 FAA certification timeline and latest developments 2025') ? 'saved' : ''}" id="bm-hero" onclick="event.stopPropagation();toggleBookmark('Boeing 737 MAX 10 FAA certification timeline and latest developments 2025','Boeing 737 MAX 10 Certification: What\'s the Current Status?','FAA / CERTIFICATION','tag-reg','bm-hero')">🔖</button>
+        <div class="hero-card-body">
+          <div class="card-tag tag-reg">● FAA / CERTIFICATION</div>
+          <div class="card-title">Boeing 737 MAX 10 Certification:<br>What's the Current Status?</div>
+          <div class="card-excerpt">The FAA continues its extended review of Boeing's 737 MAX 10 certification. With the congressional exemption deadline passed and new safety requirements in place, the path to service entry remains uncertain. Airlines with orders are adjusting fleet plans accordingly.</div>
+          <div class="card-meta">
+            <span>AI BRIEFING</span>
+            <span class="card-meta-dot">·</span>
+            <span class="card-tag tag-mfr" style="margin:0;padding:2px 8px;font-size:10px;">MANUFACTURER</span>
+            <span class="card-meta-dot">·</span>
+            <span>Click to read full analysis</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:8px">Latest Updates</div>
+      <div class="cards-list" id="newsFeed">
+        <!-- dynamically populated -->
+      </div>
+    </div>
+
+    <!-- RIGHT: SIDEBAR -->
+    <div class="sidebar">
+      <div class="section-label">Trending Now</div>
+      <div class="trending-list" id="trendingList">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <div id="modalTag" class="card-tag" style="margin-bottom:10px"></div>
+        <div id="modalTitle" style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;line-height:1.15;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0;">
+        <button class="modal-close" onclick="closeModal()">✕</button>
+        <div id="modalAnnounced" class="announced-badge" style="display:none;"></div>
+      </div>
+    </div>
+    <div class="modal-body" id="modalBody">
+      <div class="modal-spinner">
+        <div class="modal-spinner-ring"></div>
+        <span>Fetching latest intelligence...</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <span id="modalMeta"></span>
+      <span class="ai-badge">⬡ AI-GENERATED BRIEFING</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// API Key setup — stored locally so you only enter it once
+let apiKey = '';
+try { apiKey = localStorage.getItem('altimeter_api_key') || ''; } catch(e){}
+if (!apiKey) {
+  apiKey = prompt('Enter your Anthropic API key to enable AI briefings:\n(Get one at console.anthropic.com)') || '';
+  if (apiKey) { try { localStorage.setItem('altimeter_api_key', apiKey); } catch(e){} }
+}
+
+// BOOKMARKS — must be initialized before any code that calls isBookmarked()
+let bookmarks = [];
+try { bookmarks = JSON.parse(localStorage.getItem('altimeter_bookmarks') || '[]'); } catch(e) { bookmarks = []; }
+
+// RECENT SEARCHES — must be initialized before any code that calls addRecentSearch()
+let recentSearches = [];
+try { recentSearches = JSON.parse(localStorage.getItem('altimeter_recent') || '[]'); } catch(e) { recentSearches = []; }
+
+function isBookmarked(query) {
+  return bookmarks.some(b => b.query === query);
+}
+
+function saveBookmarks() {
+  try { localStorage.setItem('altimeter_bookmarks', JSON.stringify(bookmarks)); } catch(e){}
+}
+
+function toggleBookmark(query, title, tagLabel, tagClass, btnId) {
+  const idx = bookmarks.findIndex(b => b.query === query);
+  if (idx > -1) {
+    bookmarks.splice(idx, 1);
+  } else {
+    bookmarks.unshift({ query, title, tagLabel, tagClass, savedAt: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}) });
+  }
+  saveBookmarks();
+  const btn = document.getElementById(btnId);
+  if (btn) btn.classList.toggle('saved', isBookmarked(query));
+  renderBookmarks();
+}
+
+function addRecentSearch(q) {
+  recentSearches = recentSearches.filter(r => r.query !== q);
+  recentSearches.unshift({ query: q, time: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}) });
+  if (recentSearches.length > 6) recentSearches = recentSearches.slice(0, 6);
+  try { localStorage.setItem('altimeter_recent', JSON.stringify(recentSearches)); } catch(e){}
+  renderRecentSearches();
+}
+
+const NEWS_ITEMS = [
+  {
+    tag: 'tag-fleet', tagLabel: 'FLEET & ORDERS',
+    title: 'Delta Accelerates Airbus A321neo Order, Defers Boeing MAX Deliveries',
+    excerpt: 'In a strategic fleet realignment, Delta Air Lines has accelerated delivery slots for 50 Airbus A321neo aircraft while pushing back Boeing 737 MAX deliveries by up to 18 months, citing production reliability concerns.',
+    meta: 'FLEET', announced: 'Jan 2025',
+    query: 'Delta Air Lines Airbus A321neo Boeing MAX fleet order 2025 2026'
+  },
+  {
+    tag: 'tag-tech', tagLabel: 'TECHNOLOGY',
+    title: 'Pratt & Whitney GTF Powder Metal Disk — 2026 Fleet Impact Update',
+    excerpt: 'The ongoing P&W GTF powder metal disk issue continues to ground hundreds of A320neo and A220 family aircraft. EASA and FAA have expanded mandatory inspection intervals as operators negotiate replacement timelines.',
+    meta: 'PROPULSION',
+    query: 'Pratt Whitney GTF powder metal disk fleet grounding 2026 update'
+  },
+  {
+    tag: 'tag-reg', tagLabel: 'REGULATION',
+    title: 'FAA Finalizes New Pilot Rest Rules for Part 135 Cargo Operators',
+    excerpt: 'The FAA has published its final rule on fatigue risk management for single-pilot Part 135 cargo operators, with phased compliance requirements beginning mid-2026.',
+    meta: 'FAA / RULEMAKING', announced: 'Mar 2025',
+    query: 'FAA pilot rest fatigue rules Part 135 cargo 2025 2026 compliance'
+  },
+  {
+    tag: 'tag-mfr', tagLabel: 'MANUFACTURER',
+    title: 'Boeing 737 MAX Production Rate Ramp — 2026 Delivery Outlook',
+    excerpt: 'Boeing has outlined a phased production rate increase for the 737 MAX program following FAA oversight milestones, targeting 38 aircraft per month by late 2026 as supplier constraints ease.',
+    meta: 'BOEING', announced: 'Feb 2026',
+    query: 'Boeing 737 MAX production rate ramp 2026 deliveries FAA'
+  },
+  {
+    tag: 'tag-fin', tagLabel: 'FINANCIAL',
+    title: 'Embraer Reports Record Backlog as E2 Demand Surges',
+    excerpt: 'Embraer Commercial Aviation has reported its largest-ever order backlog, driven by E190-E2 and E195-E2 demand from Southeast Asian and African carriers seeking fuel-efficient regional jets.',
+    meta: 'EMBRAER / EARNINGS', announced: 'Feb 2025',
+    query: 'Embraer E2 record backlog orders financial results 2025 2026'
+  },
+  {
+    tag: 'tag-tech', tagLabel: 'TECHNOLOGY',
+    title: 'Airbus A321XLR Expands Operator Base — New Routes Open in 2026',
+    excerpt: 'Following its 2024 entry into service with Iberia, the A321XLR is now in operation with multiple carriers and opening previously unviable thin transatlantic and Asia-Pacific routes in 2026.',
+    meta: 'AIRBUS / UAM', announced: 'Jan 2026',
+    query: 'Airbus A321XLR new routes operators expansion 2026'
+  },
+];
+
+const TRENDING = [
+  { num: '01', title: 'Boeing 737 MAX 10 FAA certification — 2026 status', sub: 'BOEING · CERTIFICATION', hot: true, query: 'Boeing 737 MAX 10 FAA certification status 2026' },
+  { num: '02', title: 'Airbus A320neo family production rate 2026', sub: 'AIRBUS · PRODUCTION', hot: false, query: 'Airbus A320neo production rate increase 2026' },
+  { num: '03', title: 'FAA NextGen ATC modernization phase update', sub: 'FAA · ATC TECHNOLOGY', hot: false, query: 'FAA NextGen air traffic control modernization 2026' },
+  { num: '04', title: 'Sustainable Aviation Fuel mandate — EU & US 2026', sub: 'SAF · POLICY', hot: true, query: 'sustainable aviation fuel SAF mandate EU US 2026' },
+  { num: '05', title: 'Spirit AeroSystems restructuring — Boeing supply chain', sub: 'BOEING · SUPPLY CHAIN', hot: false, query: 'Spirit AeroSystems Boeing acquisition supply chain 2026' },
+  { num: '06', title: 'Middle East carrier A350 fleet expansion 2026', sub: 'EMIRATES · FLEET', hot: false, query: 'Middle East airlines A350 fleet expansion orders 2026' },
+];
+
+// Safe ID generator — no btoa, no special character crashes
+function safeId(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'bm' + Math.abs(hash).toString(36);
+}
+
+// ── FRESHNESS SYSTEM ──────────────────────────────────────────────────────────
+// Each stored card: { ...item, lastChecked, extended }
+// Age limit: 18 months. Extended cards get +2 months per cycle.
+
+const STORAGE_KEY = 'altimeter_feed_v2';
+const AGE_LIMIT_MONTHS = 18;
+const EXTENSION_MONTHS = 2;
+const NOW = new Date();
+
+function parseAnnouncedDate(str) {
+  if (!str) return null;
+  // Strip "(extended)" suffix if present
+  const clean = str.replace(/\s*\(extended\)/i, '').trim();
+  const d = new Date(clean + ' 1');
+  return isNaN(d) ? null : d;
+}
+
+function monthsAgo(date) {
+  return (NOW.getFullYear() - date.getFullYear()) * 12 + (NOW.getMonth() - date.getMonth());
+}
+
+function isStale(item) {
+  // Items with no announced date are ongoing — never stale
+  const d = parseAnnouncedDate(item.announced);
+  if (!d) return false;
+  const limit = item.extended ? AGE_LIMIT_MONTHS + item.extensionMonths : AGE_LIMIT_MONTHS;
+  return monthsAgo(d) > limit;
+}
+
+function loadStoredFeed() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const stored = JSON.parse(raw);
+    // Must be an array of 6
+    if (!Array.isArray(stored) || stored.length !== 6) return null;
+    return stored;
+  } catch(e) { return null; }
+}
+
+function saveFeed(items) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch(e) {}
+}
+
+function renderCard(item, slotId) {
+  const bmId = safeId(item.query);
+  const announcedText = item.announced
+    ? `Announced ${item.announced}${item.extended ? ' <span style="opacity:0.7;font-size:9px;">(extended)</span>' : ''}`
+    : '';
+  return `
+    <div class="small-card" id="${slotId}" onclick="openModal('${item.query.replace(/'/g,"\\'")}', '${item.tagLabel}', '${item.title.replace(/'/g,"\\'")}', '${item.tag}', '${(item.announced||'').replace(/'/g,"\\'")}')">
+      <button class="bm-btn ${isBookmarked(item.query) ? 'saved' : ''}" id="${bmId}" onclick="event.stopPropagation();toggleBookmark('${item.query.replace(/'/g,"\\'")}','${item.title.replace(/'/g,"\\'")}','${item.tagLabel}','${item.tag}','${bmId}')">🔖</button>
+      <div style="padding-left:38px;">
+        <div class="card-tag ${item.tag}" style="margin-bottom:8px">${item.tagLabel}</div>
+        <div class="small-card-title">${item.title}</div>
+        <div class="card-excerpt" style="font-size:13px;margin-bottom:8px;">${item.excerpt}</div>
+        <div class="card-meta">${item.meta} <span class="card-meta-dot">·</span> AI Briefing available</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;margin-left:12px;margin-top:2px;">
+        ${announcedText ? `<div class="announced-badge">${announcedText}</div>` : ''}
+        <div class="small-card-arrow">→</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSkeleton(slotId) {
+  return `
+    <div class="small-card" id="${slotId}" style="pointer-events:none;">
+      <div style="padding-left:38px;width:100%;">
+        <div style="height:10px;width:80px;background:var(--border);border-radius:4px;margin-bottom:12px;animation:shimmer 1.5s ease-in-out infinite;"></div>
+        <div style="height:14px;width:90%;background:var(--border);border-radius:4px;margin-bottom:8px;animation:shimmer 1.5s ease-in-out infinite;"></div>
+        <div style="height:12px;width:75%;background:var(--border);border-radius:4px;margin-bottom:6px;animation:shimmer 1.5s ease-in-out infinite;"></div>
+        <div style="height:12px;width:60%;background:var(--border);border-radius:4px;animation:shimmer 1.5s ease-in-out infinite;"></div>
+      </div>
+    </div>
+  `;
+}
+
+async function findReplacement(item) {
+  const prompt = `You are an aviation news editor for ALTIMETER. The current date is March 2026.
+
+A news card in category "${item.tagLabel}" has become stale (announced: ${item.announced}). Find the single best replacement story in the same category from the past 18 months (September 2024 – March 2026).
+
+Search thoroughly. Requirements:
+- Must be a real, significant aviation story from September 2024 or later
+- Same category: ${item.tagLabel}
+- EXCLUDE: accidents, crashes, incidents, emergency landings, in-service failures
+- Systemic airworthiness issues, groundings, and regulatory actions ARE acceptable
+
+If after thorough consideration you genuinely cannot find any good replacement story in this category from the past 18 months, respond with exactly: NO_REPLACEMENT
+
+Otherwise respond with a JSON object (no markdown) with these fields:
+- "tag": one of [tag-fleet, tag-reg, tag-mfr, tag-fin, tag-tech]
+- "tagLabel": e.g. "FLEET & ORDERS"
+- "title": headline max 12 words
+- "excerpt": 2-sentence summary, factual and specific
+- "meta": short category label e.g. "BOEING" or "FAA / RULEMAKING"
+- "announced": "Mon YYYY" if discrete announcement, omit if ongoing
+- "query": 8-word briefing search phrase`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) return null;
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+    if (text.includes('NO_REPLACEMENT')) return null;
+    const clean = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  } catch(e) { return null; }
+}
+
+async function initFeed() {
+  const feed = document.getElementById('newsFeed');
+
+  // Load stored cards or fall back to defaults
+  let cards = loadStoredFeed();
+  if (!cards) {
+    // First run — seed from NEWS_ITEMS, add freshness metadata
+    cards = NEWS_ITEMS.map(item => ({
+      ...item,
+      lastChecked: NOW.toISOString(),
+      extended: false,
+      extensionMonths: 0
+    }));
+    saveFeed(cards);
+  }
+
+  // Render all 6 slots — fresh cards immediately, stale cards as skeletons
+  feed.innerHTML = '';
+  cards.forEach((item, i) => {
+    const slotId = `feed-slot-${i}`;
+    if (isStale(item)) {
+      feed.innerHTML += renderSkeleton(slotId);
+    } else {
+      feed.innerHTML += renderCard(item, slotId);
+    }
+  });
+
+  // Now process stale cards one by one in background
+  for (let i = 0; i < cards.length; i++) {
+    if (!isStale(cards[i])) continue;
+
+    const slotId = `feed-slot-${i}`;
+    const replacement = await findReplacement(cards[i]);
+
+    if (replacement) {
+      // Good replacement found — swap in
+      cards[i] = {
+        ...replacement,
+        lastChecked: NOW.toISOString(),
+        extended: false,
+        extensionMonths: 0
+      };
+    } else {
+      // No replacement — extend by 2 months, mark as extended
+      const baseAnnounced = (cards[i].announced || '').replace(/\s*\(extended\)/i, '').trim();
+      cards[i] = {
+        ...cards[i],
+        announced: baseAnnounced,
+        lastChecked: NOW.toISOString(),
+        extended: true,
+        extensionMonths: (cards[i].extensionMonths || 0) + EXTENSION_MONTHS
+      };
+    }
+
+    // Swap skeleton for real card
+    const slot = document.getElementById(slotId);
+    if (slot) slot.outerHTML = renderCard(cards[i], slotId);
+
+    saveFeed(cards);
+  }
+}
+
+// Kick off feed
+initFeed();
+
+// Populate trending
+const trendList = document.getElementById('trendingList');
+TRENDING.forEach(t => {
+  const bmId = safeId(t.query + '-trend');
+  trendList.innerHTML += `
+    <div class="trend-item ${t.hot ? 'hot' : ''}" onclick="openModal('${t.query}', 'TRENDING', '${t.title}', '${t.hot ? 'tag-reg' : 'tag-fleet'}')">
+      <button class="bm-btn ${isBookmarked(t.query) ? 'saved' : ''}" id="${bmId}" onclick="event.stopPropagation();toggleBookmark('${t.query.replace(/'/g,"\\'")}','${t.title.replace(/'/g,"\\'")}','TRENDING','${t.hot ? 'tag-reg' : 'tag-fleet'}','${bmId}')">🔖</button>
+      <div class="trend-num">${t.num}</div>
+      <div class="trend-content">
+        <div class="trend-title">${t.title}</div>
+        <div class="trend-sub">${t.sub} ${t.hot ? '<span class="hot-badge">🔥 HOT</span>' : ''}</div>
+      </div>
+    </div>
+  `;
+});
+
+// Category filter — shows results inline in feed
+function setCategory(btn, cat) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (cat !== 'all') {
+    addRecentSearch(cat + ' aviation news 2026');
+    showInlineResults(cat + ' aviation news 2026');
+  }
+}
+
+// Quick search — shows results inline in feed
+function quickSearch(q) {
+  addRecentSearch(q);
+  showInlineResults(q);
+}
+
+// Search — from search bar
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(searchTimeout);
+  if (e.target.value.length > 2) {
+    searchTimeout = setTimeout(doSearch, 600);
+  } else {
+    document.getElementById('searchResults').classList.remove('visible');
+  }
+});
+document.getElementById('searchBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  doSearch();
+});
+document.addEventListener('click', e => {
+  if (!document.getElementById('searchWrap').contains(e.target)) {
+    document.getElementById('searchResults').classList.remove('visible');
+  }
+});
+
+function isHotQuery(q) {
+  const hot = ['hot news', 'breaking', 'urgent', 'breaking news', 'hot aviation', 'latest breaking', 'critical news', 'top stories'];
+  return hot.some(k => q.toLowerCase().includes(k));
+}
+
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  doSearchQuery(q, true);
+}
+
+async function doSearchQuery(q, useDropdown = false) {
+  if (!q) return;
+
+  // Track recent searches
+  addRecentSearch(q);
+
+  const results = document.getElementById('searchResults');
+  const srContent = document.getElementById('srContent');
+  const srStatus = document.getElementById('srStatus');
+  results.classList.add('visible');
+  srStatus.textContent = `Searching: "${q}"...`;
+  document.querySelector('.sr-spinner').style.display = '';
+  srContent.innerHTML = '';
+  await fetchAndRenderSearch(q, srContent, srStatus);
+}
+
+// Inline results panel for category/quick link searches
+async function showInlineResults(q) {
+  const feed = document.getElementById('newsFeed');
+  const heroSection = document.querySelector('.hero-card');
+  // Show loading state in feed
+  feed.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:24px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:13px;"><div class="sr-spinner"></div> Searching for "${q}"...</div>`;
+  if (heroSection) heroSection.style.display = 'none';
+
+  const tempContent = { innerHTML: '' };
+  const tempStatus = { textContent: '' };
+  const items = await fetchSearchItems(q);
+
+  if (heroSection) heroSection.style.display = '';
+
+  if (!items.length) {
+    feed.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px;">No results found for "${q}".<br><br><button onclick="resetFeed()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;">← Back to feed</button></div>`;
+    return;
+  }
+
+  const tagMap = { Fleet: 'tag-fleet', Financial: 'tag-fin', Manufacturer: 'tag-mfr', Regulatory: 'tag-reg', Technology: 'tag-tech', Sustainability: 'tag-mfr' };
+  feed.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:2px;">${items.length} RESULTS · "${q.toUpperCase()}"</div>
+      <button onclick="resetFeed()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:5px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">✕ CLEAR</button>
+    </div>
+  ` + items.map(item => {
+    const tag = tagMap[item.category] || 'tag-fleet';
+    const announced = item.announced || '';
+    const bmId = safeId((item.query||item.title) + Math.random());
+    return `
+      <div class="small-card" onclick="openModal('${(item.query||item.title).replace(/'/g,"\\'")}','${item.category.toUpperCase()}','${item.title.replace(/'/g,"\\'")}','${tag}','${announced}')">
+        <button class="bm-btn ${isBookmarked(item.query||item.title) ? 'saved' : ''}" id="${bmId}" onclick="event.stopPropagation();toggleBookmark('${(item.query||item.title).replace(/'/g,"\\'")}','${item.title.replace(/'/g,"\\'")}','${item.category.toUpperCase()}','${tag}','${bmId}')">🔖</button>
+        <div style="padding-left:38px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px;">
+            <div class="card-tag ${tag}" style="font-size:10px">${item.category.toUpperCase()} · ${item.entity}</div>
+            ${announced ? `<div class="announced-badge" style="flex-shrink:0;">Announced ${announced}</div>` : ''}
+          </div>
+          <div class="small-card-title">${item.title}</div>
+          <div class="card-excerpt" style="font-size:13px;margin-bottom:8px;">${item.summary}</div>
+          <div class="card-meta">AI Briefing available</div>
+        </div>
+        <div class="small-card-arrow" style="margin-left:12px;margin-top:2px;">→</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function resetFeed() {
+  const feed = document.getElementById('newsFeed');
+  const heroSection = document.querySelector('.hero-card');
+  if (heroSection) heroSection.style.display = '';
+  feed.innerHTML = '';
+  const cards = loadStoredFeed() || NEWS_ITEMS;
+  cards.forEach((item, i) => {
+    const slotId = `feed-slot-${i}`;
+    feed.innerHTML += renderCard(item, slotId);
+  });
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.cat-btn').classList.add('active');
+}
+
+async function fetchSearchItems(q) {
+  const hot = isHotQuery(q);
+  const prompt = hot
+    ? `You are an aviation news editor for ALTIMETER. Return a JSON array of exactly 5 of the most urgent, high-impact aviation stories right now (March 2026). These should demand immediate attention — major fleet decisions, significant regulatory actions, critical manufacturer developments, major financial events, or important airworthiness directives.
+
+EXCLUDE: aircraft accidents, crashes, incidents, random in-service failures, emergency landings.
+
+Each item must have:
+- "title": punchy urgent headline (max 9 words)
+- "summary": one urgent sentence, max 20 words
+- "category": one of [Fleet, Financial, Manufacturer, Regulatory, Technology, Sustainability]
+- "entity": main company/org mentioned
+- "announced": ONLY if single discrete event, format "Mon YYYY", else omit
+- "query": 7-word search phrase for full briefing
+- "urgent": true
+
+Return ONLY valid JSON array, no markdown, no explanation.`
+    : `You are an aviation news intelligence assistant. The current date is March 2026. The user searched for: "${q}"
+
+Return a JSON array of exactly 5 aviation news items matching this query. All stories MUST be from the past 18 months (September 2024 or later). Prioritise stories from 2025–2026. If no stories from that window exist for a narrow query, broaden slightly to related topics that do have recent news — do NOT return stories older than 18 months.
+
+Focus on: fleet orders, financial news, manufacturer updates (Boeing, Airbus, Embraer), FAA/EASA/regulatory news, and aviation technology. EXCLUDE any incident/accident reports involving passenger or cargo aircraft (no crashes, emergency landings, engine failures in service). Systemic/design-related issues and airworthiness directives ARE acceptable.
+
+Each item must have:
+- "title": concise news headline (max 10 words)
+- "summary": 1-sentence summary
+- "category": one of [Fleet, Financial, Manufacturer, Regulatory, Technology, Sustainability]
+- "entity": main company/org mentioned
+- "recency": e.g. "Feb 2026" or "Q4 2025"
+- "announced": ONLY include this field if the story is a single discrete announcement (order, rule, service entry, milestone) from the past 18 months. Format as "Mon YYYY" e.g. "Jan 2025". Omit entirely for ongoing developing stories or anything older than 18 months.
+- "query": 8-word search phrase to get more details
+
+Return ONLY valid JSON array, no markdown, no explanation.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) return [];
+    const text = data.content.map(b => b.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    try { return JSON.parse(clean); }
+    catch { const m = clean.match(/\[[\s\S]*\]/); return m ? JSON.parse(m[0]) : []; }
+  } catch { return []; }
+}
+
+async function fetchAndRenderSearch(q, srContent, srStatus) {
+  const items = await fetchSearchItems(q);
+  const hot = isHotQuery(q);
+  srStatus.textContent = hot ? `${items.length} urgent stories` : `${items.length} results for "${q}"`;
+  document.querySelector('.sr-spinner').style.display = 'none';
+  if (!items.length) {
+    srContent.innerHTML = '<div class="sr-no-results">No aviation news found for this query.</div>';
+    return;
+  }
+  const tagMap = { Fleet: 'tag-fleet', Financial: 'tag-fin', Manufacturer: 'tag-mfr', Regulatory: 'tag-reg', Technology: 'tag-tech', Sustainability: 'tag-mfr' };
+  items.forEach(item => {
+    const tag = tagMap[item.category] || 'tag-fleet';
+    const announced = item.announced || '';
+    const urgentStyle = item.urgent ? 'border-left: 2px solid var(--danger);' : '';
+    const urgentLabel = item.urgent ? `<span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--danger);letter-spacing:1px;">🔴 URGENT · </span>` : '';
+    srContent.innerHTML += `
+      <div class="sr-item" style="${urgentStyle}" onclick="openModal('${(item.query||item.title).replace(/'/g,"\\'")}', '${item.category.toUpperCase()}', '${item.title.replace(/'/g,"\\'")}', '${tag}', '${announced}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:4px;">${urgentLabel}<div class="card-tag ${tag}" style="font-size:10px">${item.category.toUpperCase()} · ${item.entity}</div></div>
+          ${announced ? `<div class="announced-badge" style="flex-shrink:0;">Announced ${announced}</div>` : ''}
+        </div>
+        <div class="sr-item-title">${item.title}</div>
+        <div class="sr-item-meta">${item.summary}</div>
+      </div>
+    `;
+  });
+}
+
+// BOOKMARKS render + remove
+
+function renderBookmarks() {
+  const list = document.getElementById('bmList');
+  const count = document.getElementById('bmCount');
+  count.textContent = bookmarks.length + ' saved';
+  if (!bookmarks.length) {
+    list.innerHTML = '<div class="panel-empty">No bookmarks yet.<br>Press 🔖 on any article to save it.</div>';
+    return;
+  }
+  list.innerHTML = bookmarks.map((b, i) => `
+    <div class="bm-item" onclick="openModal('${b.query.replace(/'/g,"\\'")}','${b.tagLabel}','${b.title.replace(/'/g,"\\'")}','${b.tagClass}')">
+      <div class="bm-item-content">
+        <div class="card-tag ${b.tagClass}" style="font-size:10px;margin-bottom:5px;">${b.tagLabel}</div>
+        <div class="bm-item-title">${b.title}</div>
+        <div class="bm-item-meta">Saved ${b.savedAt}</div>
+      </div>
+      <button class="bm-remove" onclick="event.stopPropagation();removeBookmark(${i})" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+function removeBookmark(idx) {
+  bookmarks.splice(idx, 1);
+  saveBookmarks();
+  renderBookmarks();
+}
+
+// PANEL TOGGLE
+function togglePanel(panel) {
+  const bPanel = document.getElementById('bookmarksPanel');
+  const cPanel = document.getElementById('comparePanel');
+  const bTab = document.getElementById('bookmarkTab');
+  const cTab = document.getElementById('compareTab');
+
+  if (panel === 'bookmarks') {
+    const isOpen = bPanel.classList.contains('open');
+    bPanel.classList.toggle('open', !isOpen);
+    cPanel.classList.remove('open');
+    bTab.classList.toggle('active-panel', !isOpen);
+    cTab.classList.remove('active-panel');
+    if (!isOpen) renderBookmarks();
+  } else {
+    const isOpen = cPanel.classList.contains('open');
+    cPanel.classList.toggle('open', !isOpen);
+    bPanel.classList.remove('open');
+    cTab.classList.toggle('active-panel', !isOpen);
+    bTab.classList.remove('active-panel');
+  }
+}
+
+// COMPARE TOOL
+async function runCompare() {
+  const a = document.getElementById('compareA').value.trim();
+  const b = document.getElementById('compareB').value.trim();
+  if (!a || !b) {
+    document.getElementById('compareResult').innerHTML = '<p style="color:var(--muted);font-size:13px;">Please enter both items to compare.</p>';
+    return;
+  }
+  const result = document.getElementById('compareResult');
+  result.innerHTML = '<div class="compare-loading"><div class="compare-loading-ring"></div>Generating comparison...</div>';
+
+  const prompt = `You are an aviation industry analyst for ALTIMETER. Write a detailed side-by-side aircraft comparison of: "${a}" vs "${b}"
+
+Rules:
+- Focus strictly on aircraft comparison: airframe specifications, seating capacity, range, fuel efficiency, engines, MTOW, operating costs per seat-mile, order book size, number of operators, and certification/entry-into-service status
+- Include technology differences: avionics, materials, propulsion systems, aerodynamic features
+- Cover commercial performance: which airlines operate each, fleet sizes, passenger preference, route suitability (short-haul vs long-haul, thin routes vs trunk routes)
+- Note any current certification status, production rate, or delivery backlog differences
+- NEVER include accidents, crashes, or incidents
+- Write 3-4 paragraphs using ## subheadings to separate sections
+- Be specific with numbers: range in nautical miles, seat counts, fuel burn figures, order totals
+- End with a "## Bottom Line" paragraph summarizing which aircraft suits which operator type
+
+Format with <p> tags and <h3> for subheadings. No markdown.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error();
+    let text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    text = text.replace(/##\s*(.+)/g, '<h3>$1</h3>');
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    if (!text.includes('<p>')) text = text.split('\n\n').filter(Boolean).map(p => `<p>${p}</p>`).join('');
+    result.innerHTML = `<div class="compare-result">${text}</div>`;
+  } catch {
+    result.innerHTML = '<p style="color:var(--muted);font-size:13px;">Could not generate comparison. Try again.</p>';
+  }
+}
+
+// MODAL
+async function openModal(query, tagLabel = 'BRIEFING', title = '', tagClass = 'tag-fleet', announced = '') {
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('modalTag').className = 'card-tag ' + tagClass;
+  document.getElementById('modalTag').textContent = '● ' + tagLabel;
+  document.getElementById('modalTitle').textContent = title || query;
+  document.getElementById('modalMeta').textContent = 'ALTIMETER INTELLIGENCE · AI BRIEFING';
+  const announcedEl = document.getElementById('modalAnnounced');
+  if (announced) {
+    announcedEl.textContent = 'Announced ' + announced;
+    announcedEl.style.display = 'block';
+  } else {
+    announcedEl.style.display = 'none';
+  }
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-spinner">
+      <div class="modal-spinner-ring"></div>
+      <span>Generating aviation briefing...</span>
+    </div>
+  `;
+
+  const prompt = `You are an aviation industry analyst writing for a professional aviation news platform called ALTIMETER. Write a detailed, factual news briefing about: "${query}"
+
+Important rules:
+- Focus ONLY on: fleet news, orders, financial results, manufacturer developments, FAA/EASA/regulatory news, aircraft technology innovations, sustainability/SAF news
+- NEVER include: aircraft accidents, crashes, in-service engine failures, emergency landings, incidents, or any safety event involving a specific flight
+- Systemic issues with aircraft/engine design, grounding orders, or airworthiness directives ARE acceptable
+- Write 3-4 paragraphs with factual information
+- Use subheadings (##) between sections
+- Mention specific data points, numbers, and dates where relevant
+- Be authoritative and professional
+- If this story involves any ongoing process — such as an aircraft certification in progress, a new aircraft in development, a regulation being finalized, a fleet phase-out, or a production ramp-up — naturally weave the expected completion date, effective date, first delivery date, or target milestone into the article prose where relevant. Write it as part of the sentence, e.g. "The FAA is expected to complete certification by Q3 2026" or "First deliveries are anticipated in early 2027." Do not add a separate label or callout — just include it naturally in the writing.
+- If this story is a single discrete announcement (an order, a rule finalization, a service entry, a milestone), output on the very first line: ANNOUNCED: [Month Year]. If it is an ongoing developing story with no single announcement date, skip that line entirely.
+
+Format your response with proper HTML paragraphs: use <p> tags and <h3> for subheadings. No markdown.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    let text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+
+    // Extract ANNOUNCED date from first line if AI returned one
+    const announcedMatch = text.match(/^ANNOUNCED:\s*(.+)/i);
+    if (announcedMatch && !announced) {
+      announcedEl.textContent = 'Announced ' + announcedMatch[1].trim();
+      announcedEl.style.display = 'block';
+      text = text.replace(/^ANNOUNCED:\s*.+\n*/i, '').trim();
+    } else {
+      text = text.replace(/^ANNOUNCED:\s*.+\n*/i, '').trim();
+    }
+
+    // Convert markdown-ish to HTML if needed
+    text = text.replace(/##\s*(.+)/g, '<h3>$1</h3>');
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    if (!text.includes('<p>')) {
+      text = text.split('\n\n').filter(Boolean).map(p => `<p>${p}</p>`).join('');
+    }
+
+    document.getElementById('modalBody').innerHTML = `<div class="modal-text">${text}</div>`;
+    document.getElementById('modalMeta').textContent = 'ALTIMETER · AI BRIEFING · ' + new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}).toUpperCase();
+  } catch {
+    document.getElementById('modalBody').innerHTML = '<div class="modal-text"><p>Unable to fetch briefing. Please try again.</p></div>';
+  }
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function renderRecentSearches() {
+  const section = document.getElementById('recentSection');
+  const list = document.getElementById('recentList');
+  if (!recentSearches.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = recentSearches.map(r => `
+    <div class="recent-item" onclick="addRecentSearch('${r.query.replace(/'/g,"\\'")}');showInlineResults('${r.query.replace(/'/g,"\\'")}')">
+      <span class="recent-icon">↩</span>
+      <span class="recent-text">${r.query}</span>
+      <span class="recent-tag">${r.time}</span>
+    </div>
+  `).join('');
+}
+
+// Auto-load on startup
+renderRecentSearches();
+</script>
+</body>
+</html>
